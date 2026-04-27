@@ -3,7 +3,7 @@ name: Run SStats Bot
 on:
   schedule:
     # Запуск каждые 5 минут
-    - cron: '*/5 * * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch: # Возможность запустить вручную
 
 jobs:
