@@ -111,15 +111,23 @@ def get_referee_stats_from_db(referee_name):
 
 
 def get_h2h_stats(team1_id, team2_id, year):
-    """Статистика очных встреч"""
+    """Статистика очных встреч с деталями каждого матча"""
     if not team1_id or not team2_id:
-        return {"matches_count": 0}
+        return {"matches_count": 0, "games": []}
     
     games = safe_get(f"{BASE}/games/list?teamid={team1_id}&year={year}")
     if not games:
-        return {"matches_count": 0}
+        return {"matches_count": 0, "games": []}
     
-    h2h = {"total_goals": [], "yellow_cards": [], "corners": [], "fouls": [], "matches_count": 0}
+    h2h = {
+        "total_goals": [], 
+        "yellow_cards": [], 
+        "corners": [], 
+        "fouls": [], 
+        "matches_count": 0,
+        "games": []
+    }
+    
     t2 = str(team2_id)
     found = 0
     
@@ -148,18 +156,35 @@ def get_h2h_stats(team1_id, team2_id, year):
         h2h["corners"].append(corners)
         h2h["fouls"].append(fouls)
         h2h["matches_count"] += 1
-        found += 1
         
+        h2h["games"].append({
+            "date": game.get("date"),
+            "home_team": game.get("homeTeam", {}).get("name"),
+            "away_team": game.get("awayTeam", {}).get("name"),
+            "score_home": game.get("homeFTResult"),
+            "score_away": game.get("awayFTResult"),
+            "total_goals": goals,
+            "yellow_cards": yc,
+            "corners": corners,
+            "fouls": fouls
+        })
+        
+        found += 1
         if found >= 5:
             break
         time.sleep(0.2)
     
-    result = {"matches_count": h2h["matches_count"]}
+    result = {
+        "matches_count": h2h["matches_count"],
+        "games": h2h["games"]
+    }
+    
     for key in ["total_goals", "yellow_cards", "corners", "fouls"]:
         values = h2h[key]
         result[f"avg_{key}"] = round(stats_lib.mean(values), 1) if values else 0
         result[f"max_{key}"] = max(values) if values else 0
         result[f"min_{key}"] = min(values) if values else 0
+    
     return result
 
 
@@ -389,6 +414,12 @@ def generate_verdicts(game, statistics, odds_list, referee_name, home_id, away_i
                     val = parse_line_value(odd_name)
                     if val and 5 <= val <= 15:
                         lines["corners"] = {"line": val, "odds": odd_value}
+            
+            elif ("Foul" in m_name or "Fouls" in m_name or "Фолы" in m_name) and "fouls" not in lines:
+                if "Over" in odd_name or "TB" in odd_name or "Б" in odd_name:
+                    val = parse_line_value(odd_name)
+                    if val and 15 <= val <= 40:
+                        lines["fouls"] = {"line": val, "odds": odd_value}
     
     # ---- ВЕРДИКТ ПО ЖК ----
     if "yellow_cards" in lines:
@@ -441,7 +472,8 @@ def generate_verdicts(game, statistics, odds_list, referee_name, home_id, away_i
                     "h2h_avg": h2h.get("avg_yellow_cards", 0),
                     "h2h_matches": h2h.get("matches_count", 0),
                     "referee_avg": ref_stats.get("avg_yellow_cards"),
-                    "referee_name": referee_name
+                    "referee_name": referee_name,
+                    "h2h_games": h2h.get("games", [])
                 }
             })
     
@@ -493,7 +525,8 @@ def generate_verdicts(game, statistics, odds_list, referee_name, home_id, away_i
                     "difference": round(diff, 1),
                     "h2h_avg_goals": h2h.get("avg_total_goals", 0),
                     "h2h_matches": h2h.get("matches_count", 0),
-                    "xg_total": round(xg_h + xg_a, 1)
+                    "xg_total": round(xg_h + xg_a, 1),
+                    "h2h_games": h2h.get("games", [])
                 }
             })
     
@@ -542,7 +575,65 @@ def generate_verdicts(game, statistics, odds_list, referee_name, home_id, away_i
                     "model_prediction": round(pred, 1),
                     "bookmaker_line": line,
                     "difference": round(diff, 1),
-                    "h2h_avg_corners": h2h.get("avg_corners", 0)
+                    "h2h_avg_corners": h2h.get("avg_corners", 0),
+                    "h2h_games": h2h.get("games", [])
+                }
+            })
+    
+    # ---- ВЕРДИКТ ПО ФОЛАМ ----
+    if "fouls" in lines:
+        line = lines["fouls"]["line"]
+        preds, weights = [], []
+        
+        hf = home_stats.get("avg_fouls_for", 0)
+        af = away_stats.get("avg_fouls_for", 0)
+        if hf and af:
+            preds.append(hf + af)
+            weights.append(0.35)
+        
+        if h2h.get("avg_fouls", 0) > 0:
+            preds.append(h2h["avg_fouls"])
+            weights.append(0.40)
+        
+        ref_fouls = ref_stats.get("avg_fouls", 25)
+        preds.append(ref_fouls)
+        weights.append(0.25)
+        
+        cur_f = (statistics.get("foulsHome") or 0) + (statistics.get("foulsAway") or 0)
+        if cur_f > 0:
+            preds.append(cur_f)
+            weights.append(0.15)
+        
+        if preds:
+            tw = sum(weights)
+            w = [x/tw for x in weights]
+            pred = sum(p * ww for p, ww in zip(preds, w))
+            diff = pred - line
+            
+            if diff >= 4.0:
+                conf, rec = "HIGH", f"TAKE_TB_{line}"
+            elif diff >= 2.0:
+                conf, rec = "MEDIUM", f"TAKE_TB_{line}"
+            elif diff <= -4.0:
+                conf, rec = "MEDIUM", f"TAKE_TM_{line}"
+            elif diff <= -2.0:
+                conf, rec = "LOW", f"TAKE_TM_{line}"
+            else:
+                conf, rec = "LOW", "SKIP"
+            
+            verdicts.append({
+                "market_type": "FOULS",
+                "recommendation": rec,
+                "confidence": conf,
+                "analysis_json": {
+                    "model_prediction": round(pred, 1),
+                    "bookmaker_line": line,
+                    "difference": round(diff, 1),
+                    "h2h_avg_fouls": h2h.get("avg_fouls", 0),
+                    "h2h_matches": h2h.get("matches_count", 0),
+                    "referee_avg_fouls": ref_fouls,
+                    "referee_name": referee_name,
+                    "h2h_games": h2h.get("games", [])
                 }
             })
     
