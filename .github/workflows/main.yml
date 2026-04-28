@@ -2,31 +2,24 @@ name: Run SStats Bot
 
 on:
   schedule:
-    # Запуск каждые 5 минут
-    - cron: '0 */6 * * *'
-  workflow_dispatch: # Возможность запустить вручную
+    - cron: '0 */12 * * *'  # Каждые 12 часов
+  workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Обновлено до v4
-
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v5 # Обновлено до v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
-
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
+        run: pip install -r requirements.txt
       - name: Run script
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SSTATS_API_KEY: ${{ secrets.SSTATS_API_KEY }}
-        run: |
-          python main.py
+        run: python main.py
