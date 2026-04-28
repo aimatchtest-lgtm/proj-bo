@@ -618,7 +618,7 @@ def generate_verdicts(game, statistics, odds_list, referee_name, home_id, away_i
         hf = home_stats.get("avg_fouls_for", 0)
         af = away_stats.get("avg_fouls_for", 0)
         if hf and af:
-            preds.append(hf + af)
+            preds.append(hf + af + lineup_penalty * 0.5)  # ← состав влияет на фолы
             weights.append(0.35)
         
         if h2h.get("avg_fouls", 0) > 0:
