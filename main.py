@@ -553,7 +553,7 @@ def main():
                 full = safe_get(f"{BASE}/games/{gid}")
                 if not full: continue
                 game = full.get("game", {})
-                stats = full.get("statistics", {})
+                stats = full.get("statistics") or {}
                 ref_name = full.get("refereeName")
                 odds = game.get("odds", [])
                 home = game.get("homeTeam", {})
