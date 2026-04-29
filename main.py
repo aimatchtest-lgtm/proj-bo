@@ -289,7 +289,8 @@ def get_h2h_stats(team1_id, team2_id, year):
 
 def collect_team_stats_directly(league_id, year):
     print(f"  📊 Сбор статистики команд...")
-    games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=500")
+    games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=100")
+    print(f"    📥 Получено {len(games) if games else 0} матчей")
     if not games: return 0
     teams = {}
     for gs in games:
@@ -340,7 +341,8 @@ def collect_team_stats_directly(league_id, year):
 
 def update_referee_stats(league_id, year):
     print(f"  👨‍⚖️ Сбор статистики судей...")
-    games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=500")
+    games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=100")
+    print(f"    📥 Получено {len(games) if games else 0} матчей")
     if not games: return
     refs = {}
     for gs in games:
@@ -369,7 +371,8 @@ def update_referee_stats(league_id, year):
 
 def collect_player_stats(league_id, year):
     print(f"  👤 Сбор статистики игроков...")
-    games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=500")
+    games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=100")
+    print(f"    📥 Получено {len(games) if games else 0} матчей")
     if not games: return
     players = {}
     for gs in games:
@@ -541,7 +544,8 @@ def main():
             if not pc.count:
                 print(f"  👤 Статистика игроков не найдена. Собираем...")
                 collect_player_stats(league_id, year)
-            games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=500")
+            games = safe_get(f"{BASE}/games/list?leagueid={league_id}&year={year}&limit=100")
+            print(f"    📥 Получено {len(games) if games else 0} матчей")
             if not games:
                 print(f"  ❌ Нет матчей")
                 continue
