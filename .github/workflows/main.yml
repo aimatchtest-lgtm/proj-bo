@@ -27,10 +27,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run script
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          # ВАЖНО: Название переменной должно совпадать с os.environ.get в main.py
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} 
-          SSTATS_API_KEY: ${{ secrets.SSTATS_API_KEY }}
-        run: python main.py
+     - name: Run script
+       env:
+         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}  # ✅ Должно совпадать с именем секрета
+         SSTATS_API_KEY: ${{ secrets.SSTATS_API_KEY }}
+       run: python main.py
