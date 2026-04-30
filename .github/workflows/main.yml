@@ -1,0 +1,38 @@
+name: Run SStats Bot
+
+on:
+  schedule:
+    - cron: '0 */12 * * *' # Каждые 12 часов (в 00:00 и 12:00 UTC)
+  workflow_dispatch: # Позволяет запускать вручную кнопкой "Run workflow"
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run main.py script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          # ВАЖНО: Имя переменной здесь должно совпадать с os.environ.get("SUPABASE_KEY") в main.py
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }} 
+          SSTATS_API_KEY: ${{ secrets.SSTATS_API_KEY }}
+        run: python main.py
