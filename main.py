@@ -11,8 +11,16 @@ import statistics as stats_lib
 # НАСТРОЙКИ
 # ══════════════════════════════════════════════════════
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") # Важно использовать Service Role
+# ИСПРАВЛЕНО: имя переменной должно совпадать с названием секрета в GitHub
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")  # ✅ Теперь совпадает с GitHub Secrets
 API_KEY = os.environ.get("SSTATS_API_KEY")
+
+# Проверка на случай, если ключи всё ещё пустые (для отладки)
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ ОШИБКА: Один из ключей Supabase пустой!")
+    print(f"   SUPABASE_URL: {'✓' if SUPABASE_URL else '✗'}")
+    print(f"   SUPABASE_KEY: {'✓' if SUPABASE_KEY else '✗'}")
+    exit(1)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 headers = {"apikey": API_KEY} if API_KEY else {}
